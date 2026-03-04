@@ -1,0 +1,1 @@
+console.log("Interface LiveBoard chargée !");
