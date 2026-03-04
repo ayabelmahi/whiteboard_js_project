@@ -1,0 +1,29 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap');
+
+body {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    background-color: #0a0a0a;
+}
+
+#whiteboard {
+    /* La grille de points (Dot Grid) */
+    background-image: radial-gradient(#262626 1px, transparent 1px);
+    background-size: 24px 24px;
+    touch-action: none;
+}
+
+/* Style des boutons actifs pour correspondre à tes images */
+.tool-btn.active {
+    background-color: #3b82f6 !important;
+    color: white !important;
+    box-shadow: 0 10px 15px -3px rgba(59, 130, 246, 0.3);
+}
+
+/* Animations fluides */
+.tool-btn, button {
+    transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+button:active {
+    transform: scale(0.95);
+}
