@@ -1,25 +1,75 @@
-const express = require('express');
+const express = require("express");
 const app = express();
-const http = require('http').createServer(app);
-const io = require('socket.io')(http);
+const http = require("http").createServer(app);
+const io = require("socket.io")(http);
 
-// On dit au serveur de lire les fichiers dans le dossier actuel
 app.use(express.static(__dirname));
 
-io.on('connection', (socket) => {
-    console.log('Un utilisateur est connecté');
+// Stockage en mémoire: roomId -> elements[]
+const boards = new Map();
 
-    // Quand un utilisateur dessine, on envoie les données aux autres
-    socket.on('draw-data', (data) => {
-        socket.broadcast.emit('draw-data', data);
+io.on("connection", (socket) => {
+  console.log("✅ User connected:", socket.id);
+
+  // Join room
+  socket.on("join-room", ({ roomId, userName }) => {
+    socket.join(roomId);
+    socket.data.roomId = roomId;
+    socket.data.userName = userName || socket.id.slice(0, 5);
+
+    if (!boards.has(roomId)) boards.set(roomId, []);
+
+    // Envoie l'historique au nouveau
+    socket.emit("board-state", boards.get(roomId));
+
+    // Prévenir les autres (optionnel)
+    socket.to(roomId).emit("user-joined", {
+      id: socket.id,
+      name: socket.data.userName,
     });
 
-    socket.on('disconnect', () => {
-        console.log('Utilisateur déconnecté');
+    console.log(`👥 ${socket.id} joined room ${roomId}`);
+  });
+
+  // Réception d'un élément finalisé
+  socket.on("draw-element", (element) => {
+    const roomId = socket.data.roomId;
+    if (!roomId) return;
+
+    boards.get(roomId).push(element);
+    socket.to(roomId).emit("draw-element", element);
+  });
+
+  // Clear board
+  socket.on("clear-board", () => {
+    const roomId = socket.data.roomId;
+    if (!roomId) return;
+
+    boards.set(roomId, []);
+    io.to(roomId).emit("clear-board");
+  });
+
+  // Curseur distant
+  socket.on("cursor-move", (payload) => {
+    const roomId = socket.data.roomId;
+    if (!roomId) return;
+
+    socket.to(roomId).emit("cursor-move", {
+      id: socket.id,
+      name: socket.data.userName,
+      x: payload.x,
+      y: payload.y,
     });
+  });
+
+  socket.on("disconnect", () => {
+    const roomId = socket.data.roomId;
+    if (roomId) {
+      socket.to(roomId).emit("user-left", { id: socket.id });
+    }
+    console.log("git branch User disconnected:", socket.id);
+  });
 });
 
 const PORT = 3000;
-http.listen(PORT, () => {
-    console.log(`Serveur prêt sur http://localhost:${PORT}`);
-});
+http.listen(PORT, () => console.log(`Server on http://localhost:${PORT}`));
