@@ -251,7 +251,11 @@ function drawElement(element) {
 }
 
 function redrawCanvas() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  // Remplace le blanc par le noir du design v0
+  ctx.fillStyle = "#0a0a0a"; 
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  
+  // Puis dessine les éléments
   elements.forEach(drawElement);
 }
 

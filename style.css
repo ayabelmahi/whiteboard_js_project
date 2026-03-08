@@ -3,27 +3,45 @@
 body {
     font-family: 'Plus Jakarta Sans', sans-serif;
     background-color: #0a0a0a;
+    color: #ffffff;
 }
 
 #whiteboard {
-    /* La grille de points (Dot Grid) */
+    /* La grille de points (Dot Grid) subtile du design v0 */
     background-image: radial-gradient(#262626 1px, transparent 1px);
     background-size: 24px 24px;
     touch-action: none;
+    background-color: #0a0a0a;
 }
 
-/* Style des boutons actifs pour correspondre à tes images */
+/* Effet Glassmorphism pour les panneaux */
+.glass-panel {
+    background: rgba(23, 23, 23, 0.8);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Style des boutons d'outils */
+.tool-btn {
+    transition: all 0.2s ease;
+}
+
 .tool-btn.active {
     background-color: #3b82f6 !important;
     color: white !important;
-    box-shadow: 0 10px 15px -3px rgba(59, 130, 246, 0.3);
+    box-shadow: 0 0 20px rgba(59, 130, 246, 0.4);
 }
 
-/* Animations fluides */
-.tool-btn, button {
-    transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+/* Curseur personnalisé pour le dessin */
+.cursor-crosshair {
+    cursor: crosshair;
 }
 
-button:active {
-    transform: scale(0.95);
+/* Animation pour le bouton de partage */
+#shareBtn {
+    box-shadow: 0 4px 14px 0 rgba(59, 130, 246, 0.39);
+}
+
+#shareBtn:hover {
+    box-shadow: 0 6px 20px rgba(59, 130, 246, 0.23);
 }
