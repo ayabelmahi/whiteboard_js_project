@@ -4,36 +4,26 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>LiveBoard - Collaborative Whiteboard</title>
-
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
-  <link rel="stylesheet" href="style.css" />
-
+  <style>
+    :root { --bg: #0a0a0a; --card: #171717; --primary: #3b82f6; --border: #262626; }
+    body { background: var(--bg); margin: 0; overflow: hidden; }
+    canvas { cursor: crosshair; transition: transform 0.1s ease-out; }
+    .tool-btn.active { background-color: var(--primary); color: white; box-shadow: 0 10px 15px -3px rgba(59, 130, 246, 0.3); }
+  </style>
   <script>
     tailwind.config = {
-      theme: {
-        extend: {
-          colors: {
-            background: "#0a0a0a",
-            foreground: "#ffffff",
-            card: "#171717",
-            primary: "#3b82f6",
-            border: "#262626",
-            secondary: "#262626"
-          }
-        }
-      }
+      theme: { extend: { colors: { background: "#0a0a0a", card: "#171717", primary: "#3b82f6", border: "#262626", } } }
     };
   </script>
 </head>
-<body class="bg-background text-foreground overflow-hidden h-screen w-screen relative font-sans">
+<body class="bg-background text-white h-screen w-screen relative font-sans">
 
-  <!-- Canvas -->
-  <canvas id="whiteboard" class="absolute inset-0 w-full h-full cursor-crosshair"></canvas>
+  <canvas id="whiteboard" class="absolute inset-0 w-full h-full"></canvas>
 
-  <!-- Brand -->
   <div class="absolute top-4 left-4 z-10">
-    <div class="flex items-center gap-2 bg-card border border-border rounded-xl px-4 py-2.5 shadow-2xl">
+    <div class="flex items-center gap-2 bg-card/80 backdrop-blur-md border border-border rounded-xl px-4 py-2.5 shadow-2xl">
       <div class="w-8 h-8 rounded-lg bg-primary flex items-center justify-center shadow-lg shadow-primary/20">
         <i data-lucide="pencil-line" class="w-5 h-5 text-white"></i>
       </div>
@@ -41,187 +31,108 @@
     </div>
   </div>
 
-  <!-- Toolbar -->
   <div class="absolute top-4 left-1/2 -translate-x-1/2 z-10">
-    <div class="flex items-center gap-1 bg-card border border-border rounded-2xl p-2 shadow-2xl">
-      <button data-tool="select" class="tool-btn p-2.5 rounded-xl text-zinc-400 hover:bg-zinc-800 transition-colors">
-        <i data-lucide="mouse-pointer-2" class="w-5 h-5"></i>
+    <div class="flex items-center gap-1 bg-card/80 backdrop-blur-md border border-border rounded-2xl p-2 shadow-2xl">
+      <button data-tool="select" class="tool-btn p-2.5 rounded-xl text-zinc-400 transition-all">
+        <i data-lucide="mouse-pointer" class="w-5 h-5"></i>
       </button>
-
-      <button data-tool="pencil" class="tool-btn active p-2.5 rounded-xl bg-primary text-white shadow-lg">
+      <button data-tool="pencil" class="tool-btn active p-2.5 rounded-xl text-zinc-400 transition-all">
         <i data-lucide="pencil" class="w-5 h-5"></i>
       </button>
-
-      <button data-tool="eraser" class="tool-btn p-2.5 rounded-xl text-zinc-400 hover:bg-zinc-800 transition-colors">
+      <button data-tool="eraser" class="tool-btn p-2.5 rounded-xl text-zinc-400 transition-all">
         <i data-lucide="eraser" class="w-5 h-5"></i>
       </button>
-
-      <button data-tool="rectangle" class="tool-btn p-2.5 rounded-xl text-zinc-400 hover:bg-zinc-800 transition-colors">
+      <button data-tool="rectangle" class="tool-btn p-2.5 rounded-xl text-zinc-400 transition-all">
         <i data-lucide="square" class="w-5 h-5"></i>
       </button>
-
-      <button data-tool="circle" class="tool-btn p-2.5 rounded-xl text-zinc-400 hover:bg-zinc-800 transition-colors">
+      <button data-tool="circle" class="tool-btn p-2.5 rounded-xl text-zinc-400 transition-all">
         <i data-lucide="circle" class="w-5 h-5"></i>
       </button>
-
-      <button data-tool="arrow" class="tool-btn p-2.5 rounded-xl text-zinc-400 hover:bg-zinc-800 transition-colors">
+      <button data-tool="arrow" class="tool-btn p-2.5 rounded-xl text-zinc-400 transition-all">
         <i data-lucide="move-up-right" class="w-5 h-5"></i>
       </button>
     </div>
   </div>
 
-  <!-- Top Actions -->
   <div class="absolute top-4 right-4 z-10 flex items-center gap-2">
+    <button id="importBtn" class="flex items-center gap-2 px-4 py-2.5 bg-card/80 backdrop-blur-md border border-border rounded-xl text-zinc-300 font-medium hover:bg-zinc-800 shadow-xl transition-all">
+        <i data-lucide="image-plus" class="w-4 h-4"></i> Import
+    </button>
+    <input type="file" id="fileInput" accept="image/*" class="hidden" />
     <button id="shareBtn" class="flex items-center gap-2 px-5 py-2.5 bg-primary text-white rounded-xl font-semibold shadow-lg hover:brightness-110 transition-all">
-      <i data-lucide="share-2" class="w-4 h-4"></i>
-      Share
+      <i data-lucide="share-2" class="w-4 h-4"></i> Share
     </button>
-
-    <button id="saveBtn" class="p-2.5 bg-card border border-border rounded-xl text-white hover:bg-zinc-800 shadow-xl transition-all">
-      <i data-lucide="save" class="w-5 h-5"></i>
-    </button>
-
-    <button id="clearBtn" class="flex items-center gap-2 px-4 py-2.5 bg-card border border-border rounded-xl text-zinc-300 font-medium hover:bg-zinc-800 shadow-xl transition-all">
-      <i data-lucide="trash-2" class="w-4 h-4"></i>
-      Clear
-    </button>
-
-    <button id="exportBtn" class="flex items-center gap-2 px-4 py-2.5 bg-card border border-border rounded-xl text-zinc-300 font-medium hover:bg-zinc-800 shadow-xl transition-all">
-      <i data-lucide="image" class="w-4 h-4"></i>
-      Export PNG
+    <button id="clearBtn" class="flex items-center gap-2 px-4 py-2.5 bg-card/80 backdrop-blur-md border border-border rounded-xl text-zinc-300 font-medium hover:bg-zinc-800 shadow-xl transition-all">
+      <i data-lucide="trash-2" class="w-4 h-4"></i> Clear
     </button>
   </div>
 
-  <!-- Left Controls -->
-  <div class="absolute left-4 top-1/2 -translate-y-1/2 z-10 w-52 bg-card border border-border rounded-3xl p-5 shadow-2xl">
+  <div class="absolute left-4 top-1/2 -translate-y-1/2 z-10 w-48 bg-card/80 backdrop-blur-md border border-border rounded-3xl p-5 shadow-2xl">
     <div class="mb-8">
-      <label class="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500 mb-4 block">
-        Stroke
-      </label>
-
+      <label class="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500 mb-4 block">Stroke Size</label>
       <div class="flex gap-2" id="strokeSelector">
         <button data-size="1" class="stroke-btn flex-1 h-9 rounded-xl bg-zinc-900 border border-border flex items-center justify-center hover:border-zinc-500 transition-all">
           <div class="w-4 h-[1px] bg-white"></div>
         </button>
-
-        <button data-size="3" class="stroke-btn flex-1 h-9 rounded-xl bg-zinc-900 border-2 border-primary flex items-center justify-center shadow-lg shadow-primary/10 transition-all">
+        <button data-size="3" class="stroke-btn flex-1 h-9 rounded-xl bg-zinc-900 border-2 border-primary flex items-center justify-center transition-all">
           <div class="w-4 h-[3px] bg-white"></div>
         </button>
-
-        <button data-size="5" class="stroke-btn flex-1 h-9 rounded-xl bg-zinc-900 border border-border flex items-center justify-center hover:border-zinc-500 transition-all">
+        <button data-size="7" class="stroke-btn flex-1 h-9 rounded-xl bg-zinc-900 border border-border flex items-center justify-center hover:border-zinc-500 transition-all">
           <div class="w-4 h-[5px] bg-white"></div>
         </button>
       </div>
     </div>
-
     <div>
-      <label class="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500 mb-4 block">
-        Color
-      </label>
-
-      <div class="grid grid-cols-4 gap-3" id="colorPalette">
+      <label class="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500 mb-4 block">Color Palette</label>
+      <div class="grid grid-cols-4 gap-3">
         <div data-color="#ffffff" class="color-btn w-8 h-8 rounded-xl bg-white cursor-pointer ring-2 ring-offset-4 ring-offset-card ring-primary"></div>
         <div data-color="#3b82f6" class="color-btn w-8 h-8 rounded-xl bg-blue-500 cursor-pointer"></div>
         <div data-color="#22c55e" class="color-btn w-8 h-8 rounded-xl bg-green-500 cursor-pointer"></div>
+        <div data-color="#ef4444" class="color-btn w-8 h-8 rounded-xl bg-red-500 cursor-pointer"></div>
         <div data-color="#eab308" class="color-btn w-8 h-8 rounded-xl bg-yellow-500 cursor-pointer"></div>
         <div data-color="#f97316" class="color-btn w-8 h-8 rounded-xl bg-orange-500 cursor-pointer"></div>
-        <div data-color="#ef4444" class="color-btn w-8 h-8 rounded-xl bg-red-500 cursor-pointer"></div>
         <div data-color="#a855f7" class="color-btn w-8 h-8 rounded-xl bg-purple-500 cursor-pointer"></div>
         <div data-color="#ec4899" class="color-btn w-8 h-8 rounded-xl bg-pink-500 cursor-pointer"></div>
       </div>
     </div>
   </div>
 
-  <!-- Zoom -->
   <div class="absolute bottom-6 right-6 z-10">
-    <div class="flex items-center gap-1 bg-card border border-border rounded-2xl p-1.5 shadow-2xl">
-      <button id="zoomOutBtn" class="p-2 text-zinc-500 hover:text-white transition-colors">
-        <i data-lucide="minus" class="w-4 h-4"></i>
-      </button>
-      <div class="h-4 w-[1px] bg-border mx-1"></div>
+    <div class="flex items-center gap-1 bg-card/80 backdrop-blur-md border border-border rounded-2xl p-1.5 shadow-2xl">
+      <button id="zoomOutBtn" class="p-2 text-zinc-500 hover:text-white transition-colors"><i data-lucide="minus" class="w-4 h-4"></i></button>
       <span id="zoomLabel" class="px-3 text-[13px] font-black text-white min-w-[60px] text-center">100%</span>
-      <div class="h-4 w-[1px] bg-border mx-1"></div>
-      <button id="zoomInBtn" class="p-2 text-zinc-500 hover:text-white transition-colors">
-        <i data-lucide="plus" class="w-4 h-4"></i>
-      </button>
+      <button id="zoomInBtn" class="p-2 text-zinc-500 hover:text-white transition-colors"><i data-lucide="plus" class="w-4 h-4"></i></button>
     </div>
   </div>
 
-  <!-- Share Modal -->
   <div id="shareModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4">
-    <div class="absolute inset-0 bg-black/80 backdrop-blur-sm"></div>
-
+    <div class="absolute inset-0 bg-black/80 backdrop-blur-sm" onclick="closeShareModal()"></div>
     <div class="relative bg-card border border-border rounded-3xl p-8 shadow-2xl w-full max-w-md">
       <h2 class="text-2xl font-bold mb-2">Share Session</h2>
-      <p class="text-sm text-zinc-400 mb-6">
-        Invite others to collaborate in real-time on your board.
-      </p>
-
+      <p class="text-sm text-zinc-400 mb-6">Invite others to collaborate in real-time on your board.</p>
       <div class="flex gap-2 mb-6">
-        <input
-          id="shareLinkInput"
-          type="text"
-          readonly
-          class="flex-1 px-4 py-3 bg-zinc-900 border border-border rounded-xl text-sm text-zinc-300 focus:outline-none focus:border-primary"
-        />
-        <button id="copyShareBtn" class="px-5 py-3 bg-primary text-white rounded-xl font-bold hover:brightness-110 transition-all">
-          Copy
-        </button>
+        <input id="shareLinkInput" type="text" readonly class="flex-1 px-4 py-3 bg-zinc-900 border border-border rounded-xl text-sm text-zinc-300 focus:outline-none focus:border-primary" />
+        <button id="copyShareBtn" class="px-5 py-3 bg-primary text-white rounded-xl font-bold hover:brightness-110 transition-all">Copy</button>
       </div>
-
-      <button id="closeModal" class="w-full py-3 bg-zinc-800 text-white rounded-xl font-semibold hover:bg-zinc-700 transition-colors">
-        Close
-      </button>
-
-      <button id="closeModalCross" class="absolute top-6 right-6 text-zinc-500 hover:text-white transition-colors">
-        <i data-lucide="x" class="w-6 h-6"></i>
-      </button>
+      <button onclick="closeShareModal()" class="w-full py-3 bg-zinc-800 text-white rounded-xl font-semibold hover:bg-zinc-700 transition-colors">Close</button>
     </div>
   </div>
 
   <script src="/socket.io/socket.io.js"></script>
   <script src="client.js"></script>
-
   <script>
     lucide.createIcons();
-
-    const shareBtn = document.getElementById("shareBtn");
-    const shareModal = document.getElementById("shareModal");
-    const closeModal = document.getElementById("closeModal");
-    const closeModalCross = document.getElementById("closeModalCross");
-    const shareLinkInput = document.getElementById("shareLinkInput");
-    const copyShareBtn = document.getElementById("copyShareBtn");
-
-    function openShareModal() {
-      shareLinkInput.value = window.location.href;
-      shareModal.classList.remove("hidden");
-    }
-
-    function closeShareModal() {
-      shareModal.classList.add("hidden");
-    }
-
-    shareBtn.addEventListener("click", openShareModal);
-    closeModal.addEventListener("click", closeShareModal);
-    closeModalCross.addEventListener("click", closeShareModal);
-
-    shareModal.addEventListener("click", (e) => {
-      if (e.target === shareModal.firstElementChild) {
-        closeShareModal();
-      }
-    });
-
-    copyShareBtn.addEventListener("click", async () => {
-      try {
-        await navigator.clipboard.writeText(shareLinkInput.value);
-        copyShareBtn.textContent = "Copied!";
-        setTimeout(() => {
-          copyShareBtn.textContent = "Copy";
-        }, 1500);
-      } catch (error) {
-        console.error("Copy failed:", error);
-      }
-    });
+    function closeShareModal() { document.getElementById("shareModal").classList.add("hidden"); }
+    document.getElementById("shareBtn").onclick = () => {
+        document.getElementById("shareLinkInput").value = window.location.href;
+        document.getElementById("shareModal").classList.remove("hidden");
+    };
+    document.getElementById("copyShareBtn").onclick = async () => {
+        await navigator.clipboard.writeText(window.location.href);
+        const btn = document.getElementById("copyShareBtn");
+        btn.textContent = "Copied!";
+        setTimeout(() => btn.textContent = "Copy", 2000);
+    };
   </script>
 </body>
 </html>
