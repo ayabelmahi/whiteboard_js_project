@@ -1,243 +1,93 @@
-const express = require("express");
+const express = require('express');
 const app = express();
-const http = require("http").createServer(app);
-const io = require("socket.io")(http);
-const mysql = require("mysql2/promise");
+const http = require('http').createServer(app);
+const io = require('socket.io')(http);
 
-// =========================
-// CONFIG
-// =========================
-const PORT = 3000;
-
-// Mets ici tes infos MySQL
-const db = mysql.createPool({
-  host: "localhost",
-  user: "root",
-  password: "", // <-- remplace par ton mot de passe MySQL si tu en as un
-  database: "liveboard_db",
-  waitForConnections: true,
-  connectionLimit: 10,
-  queueLimit: 0,
-});
-
-// =========================
-// MIDDLEWARES
-// =========================
 app.use(express.static(__dirname));
-app.use(express.json());
 
-// =========================
-// CACHE MEMOIRE
-// roomId -> elements[]
-// =========================
-const boards = new Map();
+// Stockage de l'état des tableaux par Room
+let boardsHistory = {};
 
-// =========================
-// DB HELPERS
-// =========================
-async function getBoardFromDB(roomId) {
-  const [rows] = await db.query(
-    "SELECT elements FROM boards WHERE room_id = ?",
-    [roomId]
-  );
+io.on('connection', (socket) => {
+    
+    // Rejoindre une salle
+    socket.on('join-room', ({ roomId, userName }) => {
+        socket.join(roomId);
+        socket.userName = userName;
+        socket.roomId = roomId;
 
-  if (rows.length === 0) {
-    return [];
-  }
+        // Si la salle n'existe pas, on l'initialise
+        if (!boardsHistory[roomId]) {
+            boardsHistory[roomId] = [];
+        }
 
-  let elements = rows[0].elements;
+        // Envoyer l'état actuel du tableau au nouvel utilisateur
+        socket.emit("board-state", boardsHistory[roomId]);
+    });
 
-  if (typeof elements === "string") {
-    try {
-      elements = JSON.parse(elements);
-    } catch (error) {
-      console.error("JSON parse error:", error);
-      elements = [];
-    }
-  }
+    // Dessiner un nouvel élément
+    socket.on('draw-element', (element) => {
+        const roomId = socket.roomId;
+        if (roomId && boardsHistory[roomId]) {
+            boardsHistory[roomId].push(element);
+            // Diffuser à tous les autres dans la salle
+            socket.to(roomId).emit('draw-element', element);
+        }
+    });
 
-  return Array.isArray(elements) ? elements : [];
-}
+    // Mettre à jour un élément (déplacement / modification)
+    socket.on('update-element', (updatedElement) => {
+        const roomId = socket.roomId;
+        if (roomId && boardsHistory[roomId]) {
+            const index = boardsHistory[roomId].findIndex(el => el.id === updatedElement.id);
+            if (index !== -1) {
+                boardsHistory[roomId][index] = updatedElement;
+            }
+            socket.to(roomId).emit('update-element', updatedElement);
+        }
+    });
 
-async function saveBoardToDB(roomId, elements) {
-  await db.query(
-    `
-    INSERT INTO boards (room_id, elements)
-    VALUES (?, ?)
-    ON DUPLICATE KEY UPDATE
-      elements = VALUES(elements),
-      updated_at = CURRENT_TIMESTAMP
-    `,
-    [roomId, JSON.stringify(elements)]
-  );
-}
+    // --- LOGIQUE DE SUPPRESSION (GOMME) ---
+    socket.on('delete-element', (id) => {
+        const roomId = socket.roomId;
+        if (roomId && boardsHistory[roomId]) {
+            // Supprimer de l'historique du serveur
+            boardsHistory[roomId] = boardsHistory[roomId].filter(el => el.id !== id);
+            // Informer tous les autres clients pour qu'ils effacent l'élément
+            socket.to(roomId).emit('delete-element', id);
+        }
+    });
 
-// =========================
-// API ROUTES
-// =========================
+    // Déplacement du curseur
+    socket.on('cursor-move', (data) => {
+        if (socket.roomId) {
+            socket.to(socket.roomId).emit('cursor-move', {
+                id: socket.id,
+                name: socket.userName,
+                x: data.x,
+                y: data.y
+            });
+        }
+    });
 
-// Test route
-app.get("/api/health", (req, res) => {
-  res.json({ ok: true, message: "Server is running" });
+    // Nettoyer tout le tableau
+    socket.on('clear-board', () => {
+        const roomId = socket.roomId;
+        if (roomId) {
+            boardsHistory[roomId] = [];
+            io.in(roomId).emit('clear-board');
+        }
+    });
+
+    // Déconnexion
+    socket.on('disconnect', () => {
+        if (socket.roomId) {
+            socket.to(socket.roomId).emit('user-left', { id: socket.id });
+        }
+    });
 });
 
-// Load board
-app.get("/api/boards/:roomId", async (req, res) => {
-  try {
-    const { roomId } = req.params;
-    const elements = await getBoardFromDB(roomId);
-
-    return res.json({
-      roomId,
-      elements,
-    });
-  } catch (error) {
-    console.error("GET /api/boards/:roomId error:", error);
-    return res.status(500).json({
-      message: "Failed to load board",
-      error: error.message,
-    });
-  }
-});
-
-// Save board
-app.post("/api/boards/save", async (req, res) => {
-  try {
-    const { roomId, elements } = req.body;
-
-    if (!roomId || !Array.isArray(elements)) {
-      return res.status(400).json({
-        message: "Invalid payload. roomId and elements[] are required.",
-      });
-    }
-
-    await saveBoardToDB(roomId, elements);
-
-    // Met à jour aussi le cache mémoire
-    boards.set(roomId, elements);
-
-    return res.json({
-      success: true,
-      message: "Board saved successfully",
-    });
-  } catch (error) {
-    console.error("POST /api/boards/save error:", error);
-    return res.status(500).json({
-      message: "Failed to save board",
-      error: error.message,
-    });
-  }
-});
-
-// =========================
-// SOCKET.IO
-// =========================
-io.on("connection", (socket) => {
-  console.log("✅ User connected:", socket.id);
-
-  // Join room
-  socket.on("join-room", async ({ roomId, userName }) => {
-    try {
-      if (!roomId) return;
-
-      socket.join(roomId);
-      socket.data.roomId = roomId;
-      socket.data.userName = userName || socket.id.slice(0, 5);
-
-      // Charger le board depuis cache ou DB
-      if (!boards.has(roomId)) {
-        const dbElements = await getBoardFromDB(roomId);
-        boards.set(roomId, dbElements);
-      }
-
-      // Envoyer l'historique au nouveau client
-      socket.emit("board-state", boards.get(roomId));
-
-      // Prévenir les autres
-      socket.to(roomId).emit("user-joined", {
-        id: socket.id,
-        name: socket.data.userName,
-      });
-
-      console.log(`👥 ${socket.id} joined room ${roomId}`);
-    } catch (error) {
-      console.error("join-room error:", error);
-    }
-  });
-
-  // Quand un élément est terminé
-  socket.on("draw-element", (element) => {
-    try {
-      const roomId = socket.data.roomId;
-      if (!roomId) return;
-      if (!element) return;
-
-      if (!boards.has(roomId)) {
-        boards.set(roomId, []);
-      }
-
-      boards.get(roomId).push(element);
-
-      // Envoie aux autres dans la room
-      socket.to(roomId).emit("draw-element", element);
-    } catch (error) {
-      console.error("draw-element error:", error);
-    }
-  });
-
-  // Clear board
-  socket.on("clear-board", async () => {
-    try {
-      const roomId = socket.data.roomId;
-      if (!roomId) return;
-
-      boards.set(roomId, []);
-
-      // Envoie à toute la room
-      io.to(roomId).emit("clear-board");
-
-      // Sauvegarde aussi en DB
-      await saveBoardToDB(roomId, []);
-    } catch (error) {
-      console.error("clear-board error:", error);
-    }
-  });
-
-  // Curseur distant
-  socket.on("cursor-move", (payload) => {
-    try {
-      const roomId = socket.data.roomId;
-      if (!roomId || !payload) return;
-
-      socket.to(roomId).emit("cursor-move", {
-        id: socket.id,
-        name: socket.data.userName,
-        x: payload.x,
-        y: payload.y,
-      });
-    } catch (error) {
-      console.error("cursor-move error:", error);
-    }
-  });
-
-  socket.on("disconnect", () => {
-    try {
-      const roomId = socket.data.roomId;
-
-      if (roomId) {
-        socket.to(roomId).emit("user-left", { id: socket.id });
-      }
-
-      console.log("❌ User disconnected:", socket.id);
-    } catch (error) {
-      console.error("disconnect error:", error);
-    }
-  });
-});
-
-// =========================
-// START SERVER
-// =========================
+const PORT = 3000;
 http.listen(PORT, () => {
-  console.log(`🚀 Server running on http://localhost:${PORT}`);
+    console.log(`🚀 Serveur LiveBoard prêt sur http://localhost:${PORT}`);
 });
