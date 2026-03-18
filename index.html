@@ -53,19 +53,36 @@
       </button>
     </div>
   </div>
+<div class="absolute top-4 right-4 z-10 flex items-center gap-2">
 
-  <div class="absolute top-4 right-4 z-10 flex items-center gap-2">
-    <button id="importBtn" class="flex items-center gap-2 px-4 py-2.5 bg-card/80 backdrop-blur-md border border-border rounded-xl text-zinc-300 font-medium hover:bg-zinc-800 shadow-xl transition-all">
-        <i data-lucide="image-plus" class="w-4 h-4"></i> Import
-    </button>
-    <input type="file" id="fileInput" accept="image/*" class="hidden" />
-    <button id="shareBtn" class="flex items-center gap-2 px-5 py-2.5 bg-primary text-white rounded-xl font-semibold shadow-lg hover:brightness-110 transition-all">
-      <i data-lucide="share-2" class="w-4 h-4"></i> Share
-    </button>
-    <button id="clearBtn" class="flex items-center gap-2 px-4 py-2.5 bg-card/80 backdrop-blur-md border border-border rounded-xl text-zinc-300 font-medium hover:bg-zinc-800 shadow-xl transition-all">
-      <i data-lucide="trash-2" class="w-4 h-4"></i> Clear
-    </button>
-  </div>
+  <button id="saveBtn"
+    class="flex items-center gap-2 px-5 py-2.5 bg-primary text-white rounded-xl font-semibold shadow-lg hover:brightness-110 transition-all">
+    <i data-lucide="save" class="w-4 h-4"></i> Save
+  </button>
+
+  <button id="archiveBtn"
+    class="flex items-center gap-2 px-5 py-2.5 bg-card/80 backdrop-blur-md border border-border rounded-xl text-zinc-300 font-medium hover:bg-zinc-800 shadow-xl transition-all">
+    <i data-lucide="archive" class="w-4 h-4"></i> Archives
+  </button>
+
+  <button id="importBtn"
+    class="flex items-center gap-2 px-4 py-2.5 bg-card/80 backdrop-blur-md border border-border rounded-xl text-zinc-300 font-medium hover:bg-zinc-800 shadow-xl transition-all">
+    <i data-lucide="image-plus" class="w-4 h-4"></i> Import
+  </button>
+
+  <input type="file" id="fileInput" accept="image/*" class="hidden" />
+
+  <button id="shareBtn"
+    class="flex items-center gap-2 px-5 py-2.5 bg-primary text-white rounded-xl font-semibold shadow-lg hover:brightness-110 transition-all">
+    <i data-lucide="share-2" class="w-4 h-4"></i> Share
+  </button>
+
+  <button id="clearBtn"
+    class="flex items-center gap-2 px-4 py-2.5 bg-card/80 backdrop-blur-md border border-border rounded-xl text-zinc-300 font-medium hover:bg-zinc-800 shadow-xl transition-all">
+    <i data-lucide="trash-2" class="w-4 h-4"></i> Clear
+  </button>
+
+</div>
 
   <div class="absolute left-4 top-1/2 -translate-y-1/2 z-10 w-48 bg-card/80 backdrop-blur-md border border-border rounded-3xl p-5 shadow-2xl">
     <div class="mb-8">
@@ -117,6 +134,18 @@
       <button onclick="closeShareModal()" class="w-full py-3 bg-zinc-800 text-white rounded-xl font-semibold hover:bg-zinc-700 transition-colors">Close</button>
     </div>
   </div>
+   <div id="archiveModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4">
+  <div class="absolute inset-0 bg-black/80" onclick="closeArchive()"></div>
+
+  <div class="relative bg-card p-6 rounded-2xl w-[400px] max-h-[500px] overflow-y-auto">
+    <h2 class="text-xl mb-4">Archives</h2>
+    <div id="archiveList"></div>
+
+    <button onclick="closeArchive()" class="mt-4 w-full bg-zinc-800 py-2 rounded-xl">
+      Close
+    </button>
+  </div>
+</div>
 
   <script src="/socket.io/socket.io.js"></script>
   <script src="client.js"></script>
@@ -134,5 +163,6 @@
         setTimeout(() => btn.textContent = "Copy", 2000);
     };
   </script>
+ 
 </body>
 </html>
